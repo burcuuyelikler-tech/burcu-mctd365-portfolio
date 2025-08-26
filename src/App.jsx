@@ -18,80 +18,76 @@ function App() {
     details: ''
   })
 
-  // Dynamic logo loading
+  // Dynamic logo loading using Vite's import.meta.glob
   const [logoFiles, setLogoFiles] = useState([])
   
   useEffect(() => {
-    // Load all logo files dynamically
     const loadLogos = async () => {
       try {
-        // Try to load common logo names first
-        const commonLogos = [
-          'microsoft', 'apple', 'google', 'amazon', 'meta', 'tesla',
-          'netflix', 'spotify', 'adobe', 'salesforce', 'oracle', 'sap',
-          'ibm', 'cisco', 'intel', 'nvidia', 'hp', 'dell', 'lenovo', 'asus'
-        ]
+        // Use Vite's import.meta.glob to get all logo files
+        const logoModules = import.meta.glob('/public/logos/*.{png,jpg,jpeg,svg}', { 
+          as: 'url',
+          eager: false 
+        })
         
-        const availableLogos = []
-        
-        // Check which logos exist
-        for (let i = 1; i <= 50; i++) {
-          try {
-            const response = await fetch(`/logos/partner-${i}.png`, { method: 'HEAD' })
-            if (response.ok) {
-              availableLogos.push({
-                src: `/logos/partner-${i}.png`,
-                alt: `Trusted Partner ${i}`,
-                name: `Partner ${i}`
-              })
-            }
-          } catch (e) {
-            // Logo doesn't exist, skip
+        const logoPromises = Object.entries(logoModules).map(async ([path, importFn]) => {
+          const url = await importFn()
+          const fileName = path.split('/').pop().split('.')[0]
+          const cleanName = fileName
+            .replace(/[-_]/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ')
+          
+          return {
+            src: `/logos/${path.split('/').pop()}`,
+            alt: `${cleanName} Partner`,
+            name: cleanName
           }
-        }
+        })
         
-        // Check for brand name logos
-        for (const brand of commonLogos) {
-          try {
-            const response = await fetch(`/logos/${brand}.png`, { method: 'HEAD' })
-            if (response.ok) {
-              availableLogos.push({
-                src: `/logos/${brand}.png`,
-                alt: `${brand.charAt(0).toUpperCase() + brand.slice(1)} Partner`,
-                name: brand.charAt(0).toUpperCase() + brand.slice(1)
-              })
-            }
-          } catch (e) {
-            // Logo doesn't exist, skip
-          }
-        }
+        const logos = await Promise.all(logoPromises)
         
-        // If no logos found, use placeholder
-        if (availableLogos.length === 0) {
-          for (let i = 1; i <= 6; i++) {
-            availableLogos.push({
-              src: `/logos/placeholder-${i}.png`,
-              alt: `Partner Company ${i}`,
-              name: `Company ${i}`,
-              placeholder: true
-            })
-          }
+        // If no logos found via glob, try direct file checking
+        if (logos.length === 0) {
+          const knownLogos = [
+            'ahe', 'cocacola', 'danone', 'delonghi', 'demirorenmedya', 
+            'eczacibasi', 'fakir', 'ford', 'honda', 'hsa', 'koczer', 
+            'lindstrom', 'loreal', 'madamecoco', 'toyota', 'vavacars'
+          ]
+          
+          const fallbackLogos = knownLogos.map(name => ({
+            src: `/logos/${name}.png`,
+            alt: `${name.charAt(0).toUpperCase() + name.slice(1)} Partner`,
+            name: name.charAt(0).toUpperCase() + name.slice(1)
+          }))
+          
+          setLogoFiles(fallbackLogos)
+        } else {
+          setLogoFiles(logos)
         }
-        
-        setLogoFiles(availableLogos)
       } catch (error) {
         console.error('Error loading logos:', error)
-        // Fallback to placeholder logos
-        const placeholderLogos = []
-        for (let i = 1; i <= 6; i++) {
-          placeholderLogos.push({
-            src: `/logos/placeholder-${i}.png`,
-            alt: `Partner Company ${i}`,
-            name: `Company ${i}`,
-            placeholder: true
-          })
-        }
-        setLogoFiles(placeholderLogos)
+        // Fallback to known logos
+        const fallbackLogos = [
+          { src: '/logos/ahe.png', alt: 'AHE Partner', name: 'AHE' },
+          { src: '/logos/cocacola.png', alt: 'Coca Cola Partner', name: 'Coca Cola' },
+          { src: '/logos/danone.png', alt: 'Danone Partner', name: 'Danone' },
+          { src: '/logos/delonghi.png', alt: 'DeLonghi Partner', name: 'DeLonghi' },
+          { src: '/logos/demirorenmedya.png', alt: 'Demirören Medya Partner', name: 'Demirören Medya' },
+          { src: '/logos/eczacibasi.png', alt: 'Eczacıbaşı Partner', name: 'Eczacıbaşı' },
+          { src: '/logos/fakir.png', alt: 'Fakir Partner', name: 'Fakir' },
+          { src: '/logos/ford.jpg', alt: 'Ford Partner', name: 'Ford' },
+          { src: '/logos/honda.png', alt: 'Honda Partner', name: 'Honda' },
+          { src: '/logos/hsa.png', alt: 'HSA Partner', name: 'HSA' },
+          { src: '/logos/koczer.png', alt: 'Koczer Partner', name: 'Koczer' },
+          { src: '/logos/lindstrom.png', alt: 'Lindström Partner', name: 'Lindström' },
+          { src: '/logos/loreal.png', alt: 'L\'Oréal Partner', name: 'L\'Oréal' },
+          { src: '/logos/madamecoco.png', alt: 'Madame Coco Partner', name: 'Madame Coco' },
+          { src: '/logos/toyota.png', alt: 'Toyota Partner', name: 'Toyota' },
+          { src: '/logos/vavacars.png', alt: 'Vavacars Partner', name: 'Vavacars' }
+        ]
+        setLogoFiles(fallbackLogos)
       }
     }
     
