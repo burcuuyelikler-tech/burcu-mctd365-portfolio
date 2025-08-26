@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { ChevronDown, ExternalLink, User, BookOpen, Wrench, Mail, Send } from 'lucide-react'
+import { translations } from './translations.js'
 import './App.css'
 
 function App() {
@@ -16,6 +17,15 @@ function App() {
     subcategory: '',
     details: ''
   })
+
+  // Blog states
+  const [blogPosts, setBlogPosts] = useState([])
+  const [blogCategories, setBlogCategories] = useState([])
+  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [blogLoading, setBlogLoading] = useState(false)
+  
+  // Medium RSS URL
+  const MEDIUM_RSS_URL = 'https://medium.com/feed/@burcugurel'
 
   // Function to get the current language from the DOM (if set by a previous script)
   const getInitialLanguage = () => {
@@ -34,34 +44,238 @@ function App() {
     localStorage.setItem('selectedLanguage', selectedLanguage)
   }, [selectedLanguage])
 
-  const languages = {
-    en: { flag: '🇺🇸', name: 'English' },
-    tr: { flag: '🇹🇷', name: 'Türkçe' },
-    nl: { flag: '🇳🇱', name: 'Nederlands' },
-    de: { flag: '🇩🇪', name: 'Deutsch' }
+  // Translation function
+  const t = (key) => {
+    const keys = key.split('.')
+    let value = translations[selectedLanguage]
+    
+    for (const k of keys) {
+      if (value && typeof value === 'object') {
+        value = value[k]
+      } else {
+        // Fallback to English if translation not found
+        value = translations.en
+        for (const fallbackKey of keys) {
+          if (value && typeof value === 'object') {
+            value = value[fallbackKey]
+          } else {
+            return key // Return key if no translation found
+          }
+        }
+        break
+      }
+    }
+    
+    return value || key
   }
 
-  const handleNewsletterSubmit = (e) => {
+  // Blog fetch functions - Medium RSS
+  const fetchMediumPosts = async () => {
+    try {
+      setBlogLoading(true)
+      // Use RSS2JSON service to convert RSS to JSON
+      const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(MEDIUM_RSS_URL)}`)
+      const data = await response.json()
+      
+      if (data.status === 'ok') {
+        // Process Medium posts with language detection
+        const posts = data.items.map((item, index) => {
+          // Simple language detection based on title/content
+          let detectedLanguage = 'en' // default
+          const text = (item.title + ' ' + item.description).toLowerCase()
+          
+          // Turkish detection
+          if (text.includes('türkiye') || text.includes('türk') || text.includes('ile') || 
+              text.includes('için') || text.includes('olan') || text.includes('bir') ||
+              text.includes('bu') || text.includes('ve') || text.includes('da') ||
+              text.includes('de') || text.includes('ı') || text.includes('ğ') ||
+              text.includes('ş') || text.includes('ç') || text.includes('ö') || text.includes('ü')) {
+            detectedLanguage = 'tr'
+          }
+          // Dutch detection
+          else if (text.includes('het') || text.includes('een') || text.includes('van') ||
+                   text.includes('voor') || text.includes('met') || text.includes('zijn') ||
+                   text.includes('hebben') || text.includes('worden') || text.includes('kunnen')) {
+            detectedLanguage = 'nl'
+          }
+          // German detection
+          else if (text.includes('der') || text.includes('die') || text.includes('das') ||
+                   text.includes('und') || text.includes('ist') || text.includes('mit') ||
+                   text.includes('für') || text.includes('von') || text.includes('zu') ||
+                   text.includes('ß') || text.includes('ä') || text.includes('ö') || text.includes('ü')) {
+            detectedLanguage = 'de'
+          }
+          
+          return {
+            id: index,
+            title: item.title,
+            excerpt: item.description.replace(/<[^>]*>/g, '').substring(0, 150) + '...',
+            content: item.content,
+            link: item.link,
+            publishedAt: item.pubDate,
+            categories: [], // Empty categories for manual assignment
+            thumbnail: item.thumbnail || null,
+            language: detectedLanguage
+          }
+        })
+        setBlogPosts(posts)
+        
+        // Predefined categories for manual selection
+        const predefinedCategories = [
+          { id: 1, name: 'D365 CE', slug: 'd365-ce' },
+          { id: 2, name: 'Power Platform', slug: 'power-platform' },
+          { id: 3, name: 'Training', slug: 'training' },
+          { id: 4, name: 'Implementation', slug: 'implementation' },
+          { id: 5, name: 'Best Practices', slug: 'best-practices' },
+          { id: 6, name: 'Architecture', slug: 'architecture' }
+        ]
+        setBlogCategories(predefinedCategories)
+      }
+    } catch (error) {
+      console.error('Error fetching Medium posts:', error)
+      setBlogPosts([])
+      setBlogCategories([])
+    } finally {
+      setBlogLoading(false)
+    }
+  }
+
+  // Load blog data when blog page is accessed
+  useEffect(() => {
+    if (currentPage === 'blog') {
+      fetchMediumPosts()
+    }
+  }, [currentPage])
+
+  const languages = {
+    en: { 
+      flag: (
+        <svg className="w-4 h-3 inline-block mr-1" viewBox="0 0 640 480">
+          <path fill="#012169" d="M0 0h640v480H0z"/>
+          <path fill="#FFF" d="m75 0 244 181L562 0h78v62L400 241l240 178v61h-80L320 301 81 480H0v-60l239-178L0 64V0h75z"/>
+          <path fill="#C8102E" d="m424 281 216 159v40L369 281h55zm-184 20 6 35L54 480H0l246-179zM640 0v3L391 191l2-44L590 0h50zM0 0l239 176h-60L0 42V0z"/>
+          <path fill="#FFF" d="M241 0v480h160V0H241zM0 160v160h640V160H0z"/>
+          <path fill="#C8102E" d="M0 193v96h640v-96H0zM273 0v480h96V0h-96z"/>
+        </svg>
+      ), 
+      name: 'English' 
+    },
+    tr: { 
+      flag: (
+        <svg className="w-4 h-3 inline-block mr-1" viewBox="0 0 640 480">
+          <path fill="#e30a17" d="M0 0h640v480H0z"/>
+          <circle cx="200" cy="240" r="76.8" fill="#fff"/>
+          <circle cx="208" cy="240" r="61.44" fill="#e30a17"/>
+          <path fill="#fff" d="m283.7 221.3 4.4 13.5h14.2l-11.5 8.4 4.4 13.5-11.5-8.4-11.5 8.4 4.4-13.5-11.5-8.4h14.2z"/>
+        </svg>
+      ), 
+      name: 'Türkçe' 
+    },
+    nl: { 
+      flag: (
+        <svg className="w-4 h-3 inline-block mr-1" viewBox="0 0 640 480">
+          <path fill="#21468B" d="M0 320h640v160H0z"/>
+          <path fill="#FFF" d="M0 160h640v160H0z"/>
+          <path fill="#AE1C28" d="M0 0h640v160H0z"/>
+        </svg>
+      ), 
+      name: 'Nederlands' 
+    },
+    de: { 
+      flag: (
+        <svg className="w-4 h-3 inline-block mr-1" viewBox="0 0 640 480">
+          <path fill="#ffce00" d="M0 320h640v160H0z"/>
+          <path fill="#dd0000" d="M0 160h640v160H0z"/>
+          <path fill="#000" d="M0 0h640v160H0z"/>
+        </svg>
+      ), 
+      name: 'Deutsch' 
+    }
+  }
+
+  const handleNewsletterSubmit = async (e) => {
     e.preventDefault()
-    // Newsletter subscription logic here
-    alert('Newsletter subscription submitted!')
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!newsletterEmail || !emailRegex.test(newsletterEmail)) {
+      alert('Please enter a valid email address.')
+      return
+    }
+    
+    // Substack newsletter subscription - redirect to Substack with email
+    window.open(`https://burcugurel.substack.com/subscribe?email=${encodeURIComponent(newsletterEmail)}`, '_blank')
     setNewsletterEmail('')
   }
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault()
-    // Form submission logic here - send to burcugurel_2@hotmail.com
-    alert('Form submitted successfully!')
-    setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      company: '',
-      projectType: '',
-      category: '',
-      subcategory: '',
-      details: ''
-    })
+    
+    // Form validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    
+    // Validate required fields
+    if (!formData.firstName || formData.firstName.length < 3) {
+      alert('First name must be at least 3 characters long.')
+      return
+    }
+    
+    if (!formData.lastName || formData.lastName.length < 3) {
+      alert('Last name must be at least 3 characters long.')
+      return
+    }
+    
+    if (!formData.email || !emailRegex.test(formData.email)) {
+      alert('Please enter a valid email address.')
+      return
+    }
+    
+    if (!formData.details || formData.details.length < 10) {
+      alert('Please provide more details (at least 10 characters).')
+      return
+    }
+    
+    try {
+      const formDataToSubmit = new FormData()
+      
+      // Add Web3Forms access key (you need to add this)
+      formDataToSubmit.append('access_key', 'YOUR_WEB3FORMS_ACCESS_KEY')
+      
+      // Add form fields
+      formDataToSubmit.append('firstName', formData.firstName)
+      formDataToSubmit.append('lastName', formData.lastName)
+      formDataToSubmit.append('email', formData.email)
+      formDataToSubmit.append('company', formData.company)
+      formDataToSubmit.append('projectType', formData.projectType)
+      formDataToSubmit.append('category', formData.category)
+      formDataToSubmit.append('subcategory', formData.subcategory)
+      formDataToSubmit.append('details', formData.details)
+      
+      // Web3Forms submission
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        body: formDataToSubmit
+      })
+      
+      if (response.ok) {
+        alert('Form submitted successfully!')
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          company: '',
+          projectType: '',
+          category: '',
+          subcategory: '',
+          details: ''
+        })
+      } else {
+        throw new Error('Form submission failed')
+      }
+    } catch (error) {
+      alert('There was an error submitting the form. Please try again.')
+      console.error('Form submission error:', error)
+    }
   }
 
   const handleTrainingRequest = (category, subcategory) => {
@@ -78,24 +292,28 @@ function App() {
       {/* Hero Section */}
       <section className="pt-24 pb-16 px-4">
         <div className="container mx-auto text-center">
-          <div className="w-32 h-32 mx-auto mb-8 bg-white rounded-full flex items-center justify-center text-6xl">
-            👩‍💼
+          <div className="w-32 h-32 mx-auto mb-8 bg-white rounded-full overflow-hidden border-4 border-white shadow-lg">
+            <img 
+              src="/avatar.png" 
+              alt="Burcu Gürel - Microsoft Certified Trainer" 
+              className="w-full h-full object-cover"
+            />
           </div>
           
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-            Microsoft Certified Trainer
+            {t('hero.title')}
           </h1>
           
           <h2 className="text-2xl md:text-4xl font-semibold mb-8">
-            <span className="text-white">Functional Solution Architect</span>
+            <span className="text-white">{t('hero.subtitle')}</span>
             <br />
             <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              D365 CE & Power Platform Expert
+              {t('hero.description')}
             </span>
           </h2>
           
           <p className="text-lg text-slate-300 max-w-4xl mx-auto mb-12 leading-relaxed">
-            Delivering global CRM transformations and leading cross-functional teams with 9+ years of experience in enterprise D365 CE implementations across 10+ countries.
+            {t('hero.intro')}
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -103,14 +321,14 @@ function App() {
               className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg"
               onClick={() => setCurrentPage('contact')}
             >
-              Let's Connect
+              {t('hero.connectBtn')}
             </Button>
             <Button 
               variant="outline" 
               className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white px-8 py-3 text-lg"
               onClick={() => setCurrentPage('training')}
             >
-              Explore Training
+              {t('hero.trainingBtn')}
             </Button>
           </div>
           
@@ -125,38 +343,38 @@ function App() {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-4xl font-bold text-slate-900 mb-6">Who I Am</h2>
+              <h2 className="text-4xl font-bold text-slate-900 mb-6">{t('whoIAm.title')}</h2>
               <div className="space-y-4 text-slate-700 text-lg leading-relaxed">
                 <p>
-                  With over 9 years in the Microsoft ecosystem, I specialize in architecting large-scale Dynamics 365 CE rollouts for enterprise clients across multiple countries.
+                  {t('whoIAm.paragraph1')}
                 </p>
                 <p>
-                  As both a Microsoft Certified Trainer and Power Platform Solution Architect Expert, I bring deep technical expertise combined with hands-on leadership experience.
+                  {t('whoIAm.paragraph2')}
                 </p>
                 <p>
-                  My mission is to build human-centric CRM architectures that drive measurable business outcomes while coaching diverse, cross-functional teams.
+                  {t('whoIAm.paragraph3')}
                 </p>
               </div>
             </div>
             
             <div className="bg-slate-200 rounded-lg p-8">
-              <h3 className="text-2xl font-bold text-slate-900 mb-8 text-center">Key Expertise</h3>
+              <h3 className="text-2xl font-bold text-slate-900 mb-8 text-center">{t('whoIAm.keyExpertise')}</h3>
               <div className="grid grid-cols-2 gap-6">
                 <div className="text-center">
                   <div className="text-4xl font-bold text-blue-600 mb-2">9+</div>
-                  <div className="text-slate-600">Years Experience</div>
+                  <div className="text-slate-600">{t('whoIAm.yearsExp')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-4xl font-bold text-blue-600 mb-2">10+</div>
-                  <div className="text-slate-600">Countries Served</div>
+                  <div className="text-slate-600">{t('whoIAm.countries')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-4xl font-bold text-green-600 mb-2">50+</div>
-                  <div className="text-slate-600">Enterprise Clients</div>
+                  <div className="text-slate-600">{t('whoIAm.clients')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-4xl font-bold text-red-600 mb-2">6</div>
-                  <div className="text-slate-600">Microsoft Certifications</div>
+                  <div className="text-slate-600">{t('whoIAm.certifications')}</div>
                 </div>
               </div>
             </div>
@@ -168,9 +386,9 @@ function App() {
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-slate-900 mb-4">How I Can Help</h2>
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">{t('help.title')}</h2>
             <p className="text-xl text-slate-600">
-              Comprehensive solutions combining technical architecture with team leadership
+              {t('help.subtitle')}
             </p>
           </div>
           
@@ -179,16 +397,16 @@ function App() {
               <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center mx-auto mb-6">
                 <User className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-4">D365 CE Implementation</h3>
+              <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('help.implementation.title')}</h3>
               <p className="text-slate-600 mb-6">
-                End-to-end implementation services including Copilot features, Power Apps customization, and data model governance.
+                {t('help.implementation.description')}
               </p>
               <Button 
                 variant="outline" 
                 className="text-blue-600 border-blue-600 hover:bg-blue-600 hover:text-white"
                 onClick={() => setCurrentPage('implementation')}
               >
-                Learn More <ExternalLink className="w-4 h-4 ml-2" />
+                {t('help.implementation.button')} <ExternalLink className="w-4 h-4 ml-2" />
               </Button>
             </div>
             
@@ -196,16 +414,16 @@ function App() {
               <div className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center mx-auto mb-6">
                 <BookOpen className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-4">Training Programs</h3>
+              <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('help.training.title')}</h3>
               <p className="text-slate-600 mb-6">
-                MCT-certified training solutions designed to maximize user adoption and team capability development.
+                {t('help.training.description')}
               </p>
               <Button 
                 variant="outline" 
                 className="text-green-600 border-green-600 hover:bg-green-600 hover:text-white"
                 onClick={() => setCurrentPage('training')}
               >
-                Explore Training <ExternalLink className="w-4 h-4 ml-2" />
+                {t('help.training.button')} <ExternalLink className="w-4 h-4 ml-2" />
               </Button>
             </div>
             
@@ -213,18 +431,124 @@ function App() {
               <div className="w-16 h-16 bg-purple-600 rounded-lg flex items-center justify-center mx-auto mb-6">
                 <Wrench className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-4">Insights & Knowledge</h3>
+              <h3 className="text-2xl font-bold text-slate-900 mb-4">{t('help.insights.title')}</h3>
               <p className="text-slate-600 mb-6">
-                Industry insights, architectural best practices, and thought leadership in D365 CE ecosystem.
+                {t('help.insights.description')}
               </p>
               <Button 
                 variant="outline" 
                 className="text-purple-600 border-purple-600 hover:bg-purple-600 hover:text-white"
                 onClick={() => setCurrentPage('blog')}
               >
-                Read Articles <ExternalLink className="w-4 h-4 ml-2" />
+                {t('help.insights.button')} <ExternalLink className="w-4 h-4 ml-2" />
               </Button>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* References Section */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 mb-4">{t('references.title')}</h2>
+            <p className="text-lg text-slate-600">
+              {t('references.subtitle')}
+            </p>
+          </div>
+          
+          {/* Logo Slider */}
+          <div className="overflow-hidden">
+            <div className="flex animate-scroll space-x-8 items-center">
+              {/* Logo items - duplicated for seamless loop */}
+              {[...Array(2)].map((_, setIndex) => (
+                <div key={setIndex} className="flex space-x-8 items-center">
+                  <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
+                    <img 
+                      src="/logos/microsoft.png" 
+                      alt="Microsoft" 
+                      className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                    <div className="text-slate-400 font-semibold text-sm hidden">Microsoft</div>
+                  </div>
+                  
+                  <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
+                    <img 
+                      src="/logos/dynamics365.png" 
+                      alt="Dynamics 365" 
+                      className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                    <div className="text-slate-400 font-semibold text-sm hidden">Dynamics 365</div>
+                  </div>
+                  
+                  <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
+                    <img 
+                      src="/logos/powerplatform.png" 
+                      alt="Power Platform" 
+                      className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                    <div className="text-slate-400 font-semibold text-sm hidden">Power Platform</div>
+                  </div>
+                  
+                  <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
+                    <img 
+                      src="/logos/company1.png" 
+                      alt="Partner Company 1" 
+                      className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                    <div className="text-slate-400 font-semibold text-sm hidden">Company 1</div>
+                  </div>
+                  
+                  <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
+                    <img 
+                      src="/logos/company2.png" 
+                      alt="Partner Company 2" 
+                      className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                    <div className="text-slate-400 font-semibold text-sm hidden">Company 2</div>
+                  </div>
+                  
+                  <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
+                    <img 
+                      src="/logos/company3.png" 
+                      alt="Partner Company 3" 
+                      className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                    <div className="text-slate-400 font-semibold text-sm hidden">Company 3</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="text-center mt-8">
+            <p className="text-slate-500 text-sm">
+              * Logo placeholders - Replace with actual company logos via the public/logos/ folder
+            </p>
           </div>
         </div>
       </section>
@@ -657,83 +981,129 @@ function App() {
         </div>
       </section>
 
-      {/* Featured Article */}
-      <section className="py-16 bg-slate-100">
-        <div className="container mx-auto px-4">
-          <div className="bg-white rounded-lg p-8 shadow-lg">
-            <div className="flex items-center mb-4">
-              <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm mr-4">Featured</span>
-              <span className="text-slate-500">December 15, 2025</span>
-            </div>
-            <h2 className="text-3xl font-bold text-slate-900 mb-4">
-              5 Critical Mistakes to Avoid in Your D365 CE Implementation
-            </h2>
-            <p className="text-slate-600 mb-6">
-              Learn from common pitfalls that can derail your D365 CE project and discover proven strategies to ensure success from day one. This comprehensive guide covers technical, organizational, and training-related challenges.
-            </p>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500">12 min read • Implementation</span>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                Read Article
-              </Button>
-            </div>
+      {blogLoading ? (
+        <section className="py-16 bg-slate-100">
+          <div className="container mx-auto px-4 text-center">
+            <div className="text-xl text-slate-600">Loading blog posts...</div>
           </div>
-        </div>
-      </section>
-
-      {/* Blog Categories */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-wrap gap-4 justify-center mb-12">
-            <Button variant="outline" className="border-blue-600 text-blue-600">All Posts</Button>
-            <Button variant="outline">Implementation</Button>
-            <Button variant="outline">Training</Button>
-            <Button variant="outline">Best Practices</Button>
-            <Button variant="outline">Career Tips</Button>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-slate-50 rounded-lg p-6">
-              <div className="flex items-center mb-4">
-                <span className="bg-green-600 text-white px-2 py-1 rounded text-sm mr-2">Training</span>
-                <span className="text-slate-500 text-sm">Dec 10, 2025</span>
+        </section>
+      ) : (
+        <>
+          {/* Featured Article */}
+          {blogPosts.filter(post => post.language === selectedLanguage).length > 0 && (
+            <section className="py-16 bg-slate-100">
+              <div className="container mx-auto px-4">
+                <div className="bg-white rounded-lg p-8 shadow-lg">
+                  <div className="flex items-center mb-4">
+                    <div className="mr-3">
+                      {languages[blogPosts.filter(post => post.language === selectedLanguage)[0]?.language]?.flag}
+                    </div>
+                    <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm mr-4">Featured</span>
+                    <span className="text-slate-500">
+                      {new Date(blogPosts.filter(post => post.language === selectedLanguage)[0]?.publishedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h2 className="text-3xl font-bold text-slate-900 mb-4">
+                    {blogPosts.filter(post => post.language === selectedLanguage)[0]?.title}
+                  </h2>
+                  <p className="text-slate-600 mb-6">
+                    {blogPosts.filter(post => post.language === selectedLanguage)[0]?.excerpt}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">
+                      {blogPosts.filter(post => post.language === selectedLanguage)[0]?.categories.length > 0 ? 
+                       blogPosts.filter(post => post.language === selectedLanguage)[0]?.categories[0] : 'Article'}
+                    </span>
+                    <Button 
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => window.open(blogPosts.filter(post => post.language === selectedLanguage)[0]?.link, '_blank')}
+                    >
+                      Read on Medium
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">
-                The Psychology of CRM User Adoption
-              </h3>
-              <p className="text-slate-600 text-sm">
-                Understanding the human factors that drive successful CRM adoption and how to address resistance to change.
-              </p>
-            </div>
+            </section>
+          )}
 
-            <div className="bg-slate-50 rounded-lg p-6">
-              <div className="flex items-center mb-4">
-                <span className="bg-blue-600 text-white px-2 py-1 rounded text-sm mr-2">Implementation</span>
-                <span className="text-slate-500 text-sm">Dec 8, 2025</span>
+          {/* Blog Categories */}
+          <section className="py-16 bg-white">
+            <div className="container mx-auto px-4">
+              <div className="flex flex-wrap gap-4 justify-center mb-12">
+                <Button 
+                  variant="outline" 
+                  className={selectedCategory === 'all' ? "border-blue-600 text-blue-600" : ""}
+                  onClick={() => setSelectedCategory('all')}
+                >
+                  All Posts
+                </Button>
+                {blogCategories.map(category => (
+                  <Button 
+                    key={category.id}
+                    variant="outline"
+                    className={selectedCategory === category.slug ? "border-blue-600 text-blue-600" : ""}
+                    onClick={() => setSelectedCategory(category.slug)}
+                  >
+                    {category.name}
+                  </Button>
+                ))}
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">
-                D365 CE Business Process Design
-              </h3>
-              <p className="text-slate-600 text-sm">
-                Best practices for designing efficient business processes that maximize ROI and user satisfaction.
-              </p>
-            </div>
 
-            <div className="bg-slate-50 rounded-lg p-6">
-              <div className="flex items-center mb-4">
-                <span className="bg-purple-600 text-white px-2 py-1 rounded text-sm mr-2">Best Practices</span>
-                <span className="text-slate-500 text-sm">Dec 5, 2025</span>
+              {/* Blog Posts Grid */}
+              <div className="grid md:grid-cols-3 gap-8">
+                {blogPosts
+                  .filter(post => {
+                    // Filter by selected language
+                    const languageMatch = post.language === selectedLanguage
+                    // Filter by category
+                    const categoryMatch = selectedCategory === 'all' || post.categories.some(cat => cat.toLowerCase().replace(/\s+/g, '-') === selectedCategory)
+                    return languageMatch && categoryMatch
+                  })
+                  .slice(1) // Skip first post (featured)
+                  .map(post => (
+                    <div key={post.id} className="bg-slate-50 rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow"
+                         onClick={() => window.open(post.link, '_blank')}>
+                      {post.thumbnail && (
+                        <img 
+                          src={post.thumbnail} 
+                          alt={post.title}
+                          className="w-full h-48 object-cover rounded-lg mb-4"
+                        />
+                      )}
+                      <div className="flex items-center mb-4">
+                        <div className="mr-2">
+                          {languages[post.language]?.flag}
+                        </div>
+                        <span className="bg-blue-600 text-white px-2 py-1 rounded text-sm mr-2">
+                          {post.categories.length > 0 ? post.categories[0] : 'Article'}
+                        </span>
+                        <span className="text-slate-500 text-sm">
+                          {new Date(post.publishedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-3">
+                        {post.title}
+                      </h3>
+                      <p className="text-slate-600 text-sm mb-4">
+                        {post.excerpt}
+                      </p>
+                      <div className="text-blue-600 text-sm font-medium">
+                        Read on Medium →
+                      </div>
+                    </div>
+                  ))}
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">
-                Power Platform Integration Strategies
-              </h3>
-              <p className="text-slate-600 text-sm">
-                How to leverage Power Platform capabilities to extend D365 CE functionality and create seamless workflows.
-              </p>
+
+              {/* No posts message */}
+              {blogPosts.length === 0 && !blogLoading && (
+                <div className="text-center py-12">
+                  <p className="text-slate-600 text-lg">No blog posts available yet. Check back soon!</p>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        </>
+      )}
     </div>
   )
 
@@ -760,11 +1130,17 @@ function App() {
               </p>
               
               <form onSubmit={handleFormSubmit} className="space-y-6">
+                {/* Web3Forms hidden fields */}
+                <input type="hidden" name="access_key" value="6732f0dd-ba46-4e7c-97d5-1dfd1adeebd3" />
+                <input type="hidden" name="subject" value="New Contact Form Submission from Portfolio" />
+                <input type="hidden" name="from_name" value="Portfolio Contact Form" />
+                
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">First Name</label>
                     <input
                       type="text"
+                      name="first_name"
                       value={formData.firstName}
                       onChange={(e) => setFormData({...formData, firstName: e.target.value})}
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -775,6 +1151,7 @@ function App() {
                     <label className="block text-sm font-medium text-slate-700 mb-2">Last Name</label>
                     <input
                       type="text"
+                      name="last_name"
                       value={formData.lastName}
                       onChange={(e) => setFormData({...formData, lastName: e.target.value})}
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -787,6 +1164,7 @@ function App() {
                   <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
                   <input
                     type="email"
+                    name="email"
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -798,6 +1176,7 @@ function App() {
                   <label className="block text-sm font-medium text-slate-700 mb-2">Company</label>
                   <input
                     type="text"
+                    name="company"
                     value={formData.company}
                     onChange={(e) => setFormData({...formData, company: e.target.value})}
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -808,6 +1187,7 @@ function App() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Project Type</label>
                   <select
+                    name="project_type"
                     value={formData.projectType}
                     onChange={(e) => setFormData({...formData, projectType: e.target.value})}
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -856,11 +1236,17 @@ function App() {
           <h1 className="text-4xl font-bold text-slate-900 mb-8 text-center">Request Training</h1>
           
           <form onSubmit={handleFormSubmit} className="bg-white rounded-lg p-8 shadow-lg space-y-6">
+            {/* Web3Forms hidden fields */}
+            <input type="hidden" name="access_key" value="6732f0dd-ba46-4e7c-97d5-1dfd1adeebd3" />
+            <input type="hidden" name="subject" value="New Training Request from Portfolio" />
+            <input type="hidden" name="from_name" value="Portfolio Training Request Form" />
+            
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">First Name</label>
                 <input
                   type="text"
+                  name="first_name"
                   value={formData.firstName}
                   onChange={(e) => setFormData({...formData, firstName: e.target.value})}
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -871,6 +1257,7 @@ function App() {
                 <label className="block text-sm font-medium text-slate-700 mb-2">Last Name</label>
                 <input
                   type="text"
+                  name="last_name"
                   value={formData.lastName}
                   onChange={(e) => setFormData({...formData, lastName: e.target.value})}
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -883,6 +1270,7 @@ function App() {
               <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
               <input
                 type="email"
+                name="email"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -894,6 +1282,7 @@ function App() {
               <label className="block text-sm font-medium text-slate-700 mb-2">Company</label>
               <input
                 type="text"
+                name="company"
                 value={formData.company}
                 onChange={(e) => setFormData({...formData, company: e.target.value})}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -905,6 +1294,7 @@ function App() {
               <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
               <input
                 type="text"
+                name="category"
                 value={formData.category}
                 readOnly
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-50"
@@ -915,6 +1305,7 @@ function App() {
               <label className="block text-sm font-medium text-slate-700 mb-2">Subcategory</label>
               <input
                 type="text"
+                name="subcategory"
                 value={formData.subcategory}
                 readOnly
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-50"
@@ -924,6 +1315,7 @@ function App() {
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Details</label>
               <textarea
+                name="details"
                 value={formData.details}
                 onChange={(e) => setFormData({...formData, details: e.target.value})}
                 rows={4}
@@ -956,14 +1348,14 @@ function App() {
           
           <nav className="hidden md:flex space-x-8">
             {[
-              { name: 'Home', page: 'home' },
-              { name: 'Training', page: 'training' },
-              { name: 'Implementation', page: 'implementation' },
-              { name: 'Blog', page: 'blog' },
-              { name: 'Contact', page: 'contact' }
+              { name: t('nav.home'), page: 'home' },
+              { name: t('nav.training'), page: 'training' },
+              { name: t('nav.implementation'), page: 'implementation' },
+              { name: t('nav.blog'), page: 'blog' },
+              { name: t('nav.contact'), page: 'contact' }
             ].map((item) => (
               <button 
-                key={item.name} 
+                key={item.page} 
                 onClick={() => setCurrentPage(item.page)}
                 className="text-white hover:text-blue-300 transition-colors"
               >
@@ -972,7 +1364,10 @@ function App() {
             ))}
           </nav>
 
-          <div className="relative">
+          <div className="relative flex items-center">
+            <div className="mr-2">
+              {languages[selectedLanguage]?.flag}
+            </div>
             <select 
               value={selectedLanguage}
               onChange={(e) => setSelectedLanguage(e.target.value)}
@@ -980,7 +1375,7 @@ function App() {
             >
               {Object.entries(languages).map(([code, lang]) => (
                 <option key={code} value={code}>
-                  {lang.flag} {lang.name}
+                  {lang.name}
                 </option>
               ))}
             </select>
@@ -1003,35 +1398,42 @@ function App() {
             <div>
               <h3 className="text-xl font-bold text-white mb-4">Burcu Gürel</h3>
               <p className="text-slate-300">
-                Functional Solution Architect and Microsoft Certified Trainer specializing in D365 CE implementations that drive business transformation and user adoption success.
+                {t('footer.description')}
               </p>
             </div>
             
             <div>
-              <h3 className="text-xl font-bold text-white mb-4">Quick Links</h3>
+              <h3 className="text-xl font-bold text-white mb-4">{t('footer.quickLinks')}</h3>
               <div className="space-y-2">
-                {['Training', 'Implementation'].map((link) => (
+                {[
+                  { name: t('nav.training'), page: 'training' },
+                  { name: t('nav.implementation'), page: 'implementation' }
+                ].map((link) => (
                   <button 
-                    key={link} 
-                    onClick={() => setCurrentPage(link.toLowerCase())}
+                    key={link.page} 
+                    onClick={() => setCurrentPage(link.page)}
                     className="block text-slate-300 hover:text-white transition-colors"
                   >
-                    {link}
+                    {link.name}
                   </button>
                 ))}
               </div>
             </div>
             
             <div>
-              <h3 className="text-xl font-bold text-white mb-4">Services</h3>
+              <h3 className="text-xl font-bold text-white mb-4">{t('footer.services')}</h3>
               <div className="space-y-2">
-                {['D365 CE Implementation', 'Corporate Training', 'Certification Prep'].map((service) => (
+                {[
+                  { name: t('footer.servicesList.implementation'), page: 'contact' },
+                  { name: t('footer.servicesList.training'), page: 'contact' },
+                  { name: t('footer.servicesList.certification'), page: 'contact' }
+                ].map((service) => (
                   <button 
-                    key={service} 
-                    onClick={() => setCurrentPage('contact')}
+                    key={service.name} 
+                    onClick={() => setCurrentPage(service.page)}
                     className="block text-slate-300 hover:text-white transition-colors"
                   >
-                    {service}
+                    {service.name}
                   </button>
                 ))}
               </div>
@@ -1039,7 +1441,7 @@ function App() {
           </div>
           
           <div className="border-t border-slate-700 mt-8 pt-8 text-center">
-            <p className="text-slate-400">© 2025 Burcu Gürel. All rights reserved. Made with Manus</p>
+            <p className="text-slate-400">{t('footer.copyright')}</p>
           </div>
         </div>
       </footer>
