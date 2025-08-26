@@ -1181,14 +1181,13 @@ function App() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Company</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Company (optional)</label>
                   <input
                     type="text"
                     name="company"
                     value={formData.company}
                     onChange={(e) => setFormData({...formData, company: e.target.value})}
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
                   />
                 </div>
                 
@@ -1207,6 +1206,19 @@ function App() {
                     <option value="Implementation + Training">Implementation + Training</option>
                     <option value="Consultation Only">Consultation Only</option>
                   </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Details</label>
+                  <textarea
+                    name="details"
+                    value={formData.details}
+                    onChange={(e) => setFormData({...formData, details: e.target.value})}
+                    rows={4}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Please provide additional details about your project requirements..."
+                    required
+                  />
                 </div>
                 
                 <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white w-full py-3">
@@ -1287,14 +1299,13 @@ function App() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Company</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Company (optional)</label>
               <input
                 type="text"
                 name="company"
                 value={formData.company}
                 onChange={(e) => setFormData({...formData, company: e.target.value})}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
               />
             </div>
             
