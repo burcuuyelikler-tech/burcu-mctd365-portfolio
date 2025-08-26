@@ -18,6 +18,86 @@ function App() {
     details: ''
   })
 
+  // Dynamic logo loading
+  const [logoFiles, setLogoFiles] = useState([])
+  
+  useEffect(() => {
+    // Load all logo files dynamically
+    const loadLogos = async () => {
+      try {
+        // Try to load common logo names first
+        const commonLogos = [
+          'microsoft', 'apple', 'google', 'amazon', 'meta', 'tesla',
+          'netflix', 'spotify', 'adobe', 'salesforce', 'oracle', 'sap',
+          'ibm', 'cisco', 'intel', 'nvidia', 'hp', 'dell', 'lenovo', 'asus'
+        ]
+        
+        const availableLogos = []
+        
+        // Check which logos exist
+        for (let i = 1; i <= 50; i++) {
+          try {
+            const response = await fetch(`/logos/partner-${i}.png`, { method: 'HEAD' })
+            if (response.ok) {
+              availableLogos.push({
+                src: `/logos/partner-${i}.png`,
+                alt: `Trusted Partner ${i}`,
+                name: `Partner ${i}`
+              })
+            }
+          } catch (e) {
+            // Logo doesn't exist, skip
+          }
+        }
+        
+        // Check for brand name logos
+        for (const brand of commonLogos) {
+          try {
+            const response = await fetch(`/logos/${brand}.png`, { method: 'HEAD' })
+            if (response.ok) {
+              availableLogos.push({
+                src: `/logos/${brand}.png`,
+                alt: `${brand.charAt(0).toUpperCase() + brand.slice(1)} Partner`,
+                name: brand.charAt(0).toUpperCase() + brand.slice(1)
+              })
+            }
+          } catch (e) {
+            // Logo doesn't exist, skip
+          }
+        }
+        
+        // If no logos found, use placeholder
+        if (availableLogos.length === 0) {
+          for (let i = 1; i <= 6; i++) {
+            availableLogos.push({
+              src: `/logos/placeholder-${i}.png`,
+              alt: `Partner Company ${i}`,
+              name: `Company ${i}`,
+              placeholder: true
+            })
+          }
+        }
+        
+        setLogoFiles(availableLogos)
+      } catch (error) {
+        console.error('Error loading logos:', error)
+        // Fallback to placeholder logos
+        const placeholderLogos = []
+        for (let i = 1; i <= 6; i++) {
+          placeholderLogos.push({
+            src: `/logos/placeholder-${i}.png`,
+            alt: `Partner Company ${i}`,
+            name: `Company ${i}`,
+            placeholder: true
+          })
+        }
+        setLogoFiles(placeholderLogos)
+      }
+    }
+    
+    loadLogos()
+  }, [])
+  
   // Blog states
   const [blogPosts, setBlogPosts] = useState([])
   const [blogCategories, setBlogCategories] = useState([])
@@ -463,92 +543,24 @@ function App() {
               {/* Logo items - duplicated for seamless loop */}
               {[...Array(2)].map((_, setIndex) => (
                 <div key={setIndex} className="flex space-x-8 items-center">
-                  <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
-                    <img 
-                      src="/logos/microsoft.png" 
-                      alt="Microsoft" 
-                      className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'block';
-                      }}
-                    />
-                    <div className="text-slate-400 font-semibold text-sm hidden">Microsoft</div>
-                  </div>
-                  
-                  <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
-                    <img 
-                      src="/logos/dynamics365.png" 
-                      alt="Dynamics 365" 
-                      className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'block';
-                      }}
-                    />
-                    <div className="text-slate-400 font-semibold text-sm hidden">Dynamics 365</div>
-                  </div>
-                  
-                  <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
-                    <img 
-                      src="/logos/powerplatform.png" 
-                      alt="Power Platform" 
-                      className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'block';
-                      }}
-                    />
-                    <div className="text-slate-400 font-semibold text-sm hidden">Power Platform</div>
-                  </div>
-                  
-                  <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
-                    <img 
-                      src="/logos/company1.png" 
-                      alt="Partner Company 1" 
-                      className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'block';
-                      }}
-                    />
-                    <div className="text-slate-400 font-semibold text-sm hidden">Company 1</div>
-                  </div>
-                  
-                  <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
-                    <img 
-                      src="/logos/company2.png" 
-                      alt="Partner Company 2" 
-                      className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'block';
-                      }}
-                    />
-                    <div className="text-slate-400 font-semibold text-sm hidden">Company 2</div>
-                  </div>
-                  
-                  <div className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
-                    <img 
-                      src="/logos/company3.png" 
-                      alt="Partner Company 3" 
-                      className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'block';
-                      }}
-                    />
-                    <div className="text-slate-400 font-semibold text-sm hidden">Company 3</div>
-                  </div>
+                  {/* Dynamic logo rendering */}
+                  {logoFiles.map((logo, index) => (
+                    <div key={`${setIndex}-${index}`} className="bg-slate-50 rounded-lg p-4 flex items-center justify-center h-20 hover:shadow-lg transition-all duration-300">
+                      <img 
+                        src={logo.src}
+                        alt={logo.alt}
+                        className="max-h-16 max-w-[160px] object-contain grayscale hover:grayscale-0 transition-all duration-300"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'block';
+                        }}
+                      />
+                      <div className="text-slate-400 font-semibold text-sm hidden">{logo.name}</div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
-          </div>
-          
-          <div className="text-center mt-8">
-            <p className="text-slate-500 text-sm">
-              * Logo placeholders - Replace with actual company logos via the public/logos/ folder
-            </p>
           </div>
         </div>
       </section>
