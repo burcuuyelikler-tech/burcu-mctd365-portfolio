@@ -1,10 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { ChevronDown, ExternalLink, User, BookOpen, Wrench, Mail, Send } from 'lucide-react'
 import './App.css'
 
 function App() {
-  const [selectedLanguage, setSelectedLanguage] = useState('en')
   const [currentPage, setCurrentPage] = useState('home')
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [formData, setFormData] = useState({
@@ -17,6 +16,23 @@ function App() {
     subcategory: '',
     details: ''
   })
+
+  // Function to get the current language from the DOM (if set by a previous script)
+  const getInitialLanguage = () => {
+    const htmlLang = document.documentElement.lang
+    if (htmlLang) return htmlLang
+    const storedLang = localStorage.getItem('selectedLanguage')
+    return storedLang || 'en'
+  }
+
+  const [selectedLanguage, setSelectedLanguage] = useState(getInitialLanguage)
+
+  useEffect(() => {
+    // Update the HTML lang attribute
+    document.documentElement.lang = selectedLanguage
+    // Store the selected language in localStorage
+    localStorage.setItem('selectedLanguage', selectedLanguage)
+  }, [selectedLanguage])
 
   const languages = {
     en: { flag: '🇺🇸', name: 'English' },
@@ -382,7 +398,7 @@ function App() {
                 <h3 className="text-2xl font-bold text-slate-900">Custom Workshops</h3>
               </div>
               <p className="text-slate-600 mb-6">
-                Tailored workshops focusing on specific D365 CE features and business scenarios
+                Tailored solutions for unique business requirements
               </p>
               <ul className="space-y-2 mb-6">
                 <li className="flex items-center text-slate-700">
