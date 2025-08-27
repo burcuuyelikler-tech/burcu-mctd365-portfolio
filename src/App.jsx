@@ -312,25 +312,26 @@ function App() {
     }
     
     try {
-      // Submit to our own API endpoint
-      const response = await fetch('/api/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          company: formData.company,
-          projectType: formData.projectType,
-          category: formData.category,
-          subcategory: formData.subcategory,
-          details: formData.details
-        })
-      })
+      const formDataToSubmit = new FormData()
       
-      const result = await response.json()
+      // Add Web3Forms access key (public key, safe to embed)
+      formDataToSubmit.append('access_key', '6732f0dd-ba46-4e7c-97d5-1dfd1adeebd3')
+      
+      // Add form fields
+      formDataToSubmit.append('firstName', formData.firstName)
+      formDataToSubmit.append('lastName', formData.lastName)
+      formDataToSubmit.append('email', formData.email)
+      formDataToSubmit.append('company', formData.company || 'Not provided')
+      formDataToSubmit.append('projectType', formData.projectType)
+      formDataToSubmit.append('category', formData.category || '')
+      formDataToSubmit.append('subcategory', formData.subcategory || '')
+      formDataToSubmit.append('details', formData.details)
+      
+      // Web3Forms submission
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        body: formDataToSubmit
+      })
       
       if (response.ok) {
         alert('Form submitted successfully!')
@@ -345,10 +346,10 @@ function App() {
           details: ''
         })
       } else {
-        throw new Error(result.message || 'Form submission failed')
+        throw new Error('Form submission failed')
       }
     } catch (error) {
-      alert((error && error.message) || 'Submission failed. Please try again.')
+      alert('There was an error submitting the form. Please try again.')
       console.error('Form submission error:', error)
     }
   }
