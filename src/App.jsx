@@ -348,7 +348,7 @@ function App() {
         throw new Error(result.message || 'Form submission failed')
       }
     } catch (error) {
-      alert('There was an error submitting the form. Please try again.')
+      alert((error && error.message) || 'Submission failed. Please try again.')
       console.error('Form submission error:', error)
     }
   }
