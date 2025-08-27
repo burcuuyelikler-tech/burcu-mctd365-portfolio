@@ -312,26 +312,25 @@ function App() {
     }
     
     try {
-      const formDataToSubmit = new FormData()
-      
-      // Add Web3Forms access key (you need to add this)
-      formDataToSubmit.append('access_key', 'YOUR_WEB3FORMS_ACCESS_KEY')
-      
-      // Add form fields
-      formDataToSubmit.append('firstName', formData.firstName)
-      formDataToSubmit.append('lastName', formData.lastName)
-      formDataToSubmit.append('email', formData.email)
-      formDataToSubmit.append('company', formData.company)
-      formDataToSubmit.append('projectType', formData.projectType)
-      formDataToSubmit.append('category', formData.category)
-      formDataToSubmit.append('subcategory', formData.subcategory)
-      formDataToSubmit.append('details', formData.details)
-      
-      // Web3Forms submission
-      const response = await fetch("https://api.web3forms.com/submit", {
-        method: "POST",
-        body: formDataToSubmit
+      // Submit to our own API endpoint
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          company: formData.company,
+          projectType: formData.projectType,
+          category: formData.category,
+          subcategory: formData.subcategory,
+          details: formData.details
+        })
       })
+      
+      const result = await response.json()
       
       if (response.ok) {
         alert('Form submitted successfully!')
@@ -346,7 +345,7 @@ function App() {
           details: ''
         })
       } else {
-        throw new Error('Form submission failed')
+        throw new Error(result.message || 'Form submission failed')
       }
     } catch (error) {
       alert('There was an error submitting the form. Please try again.')
